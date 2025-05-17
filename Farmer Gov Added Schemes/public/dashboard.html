@@ -1,0 +1,131 @@
+<!-- public/dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Dashboard - Farmer Schemes</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>👨‍🌾 Farmer Dashboard</h1>
+
+  <section>
+    <h2>Available Crops</h2>
+    <ul id="cropList">
+      <!-- Crops will be listed here -->
+    </ul>
+  </section>
+
+  <section>
+    <h2>Government Schemes</h2>
+    <ul id="schemeList">
+      <!-- Schemes will be listed here -->
+    </ul>
+  </section>
+
+  <section>
+    <h2>Apply for a Scheme</h2>
+    <form id="applyForm">
+      <select id="schemeDropdown"></select>
+      <input type="email" id="userEmail" placeholder="Your Email" required />
+      <button type="submit">Apply</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Application Status</h2>
+    <ul id="statusList">
+      <!-- Application statuses will appear here -->
+    </ul>
+  </section>
+
+  <script type="module">
+    import { db } from "../firebase.js";
+    import {
+      collection,
+      getDocs,
+      addDoc,
+      query,
+      where
+    } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+    const cropList = document.getElementById("cropList");
+    const schemeList = document.getElementById("schemeList");
+    const schemeDropdown = document.getElementById("schemeDropdown");
+    const statusList = document.getElementById("statusList");
+
+    function logAction(action) {
+      console.log(`[User Log] ${new Date().toISOString()}: ${action}`);
+    }
+
+    // Load Crops
+    async function loadCrops() {
+      const crops = await getDocs(collection(db, "crops"));
+      crops.forEach(docSnap => {
+        const data = docSnap.data();
+        const li = document.createElement("li");
+        li.textContent = `${data.name} - Season: ${data.season} - ${data.details}`;
+        cropList.appendChild(li);
+      });
+    }
+
+    // Load Schemes
+    async function loadSchemes() {
+      const schemes = await getDocs(collection(db, "schemes"));
+      schemes.forEach(docSnap => {
+        const data = docSnap.data();
+        const li = document.createElement("li");
+        li.textContent = `${data.name} - ${data.description}`;
+        schemeList.appendChild(li);
+
+        const option = document.createElement("option");
+        option.value = data.name;
+        option.textContent = data.name;
+        schemeDropdown.appendChild(option);
+      });
+    }
+
+    // Apply for Scheme
+    document.getElementById("applyForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("userEmail").value;
+      const schemeName = schemeDropdown.value;
+
+      try {
+        await addDoc(collection(db, "applications"), {
+          userEmail: email,
+          schemeName: schemeName,
+          status: "pending"
+        });
+        alert("Application submitted!");
+        logAction(`User ${email} applied for scheme: ${schemeName}`);
+        loadApplications(email);
+      } catch (err) {
+        alert("Failed to apply.");
+        logAction("Application failed: " + err.message);
+      }
+    });
+
+    // Load Application Status
+    async function loadApplications(email = null) {
+      statusList.innerHTML = "";
+      let appsQuery = collection(db, "applications");
+
+      if (email) {
+        appsQuery = query(appsQuery, where("userEmail", "==", email));
+      }
+
+      const applications = await getDocs(appsQuery);
+      applications.forEach(docSnap => {
+        const data = docSnap.data();
+        const li = document.createElement("li");
+        li.textContent = `Scheme: ${data.schemeName} - Status: ${data.status}`;
+        statusList.appendChild(li);
+      });
+    }
+
+    loadCrops();
+    loadSchemes();
+  </script>
+</body>
+</html>

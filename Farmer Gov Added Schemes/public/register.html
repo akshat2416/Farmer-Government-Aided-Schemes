@@ -1,0 +1,67 @@
+<!-- public/register.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register - Farmer Schemes</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>📝 Register</h1>
+
+  <form id="registerForm">
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <select id="role">
+      <option value="user">Farmer</option>
+      <option value="admin">Admin</option>
+    </select>
+    <button type="submit">Register</button>
+  </form>
+
+  <p>Already have an account? <a href="login.html">Login here</a></p>
+
+  <script type="module">
+    import { auth, db } from "../firebase.js";
+    import {
+      createUserWithEmailAndPassword
+    } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+    import {
+      setDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+    function logAction(action) {
+      console.log(`[Register Log] ${new Date().toISOString()}: ${action}`);
+    }
+
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const role = document.getElementById("role").value;
+
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userId = userCredential.user.uid;
+
+        // Save role in Firestore
+        await setDoc(doc(db, "users", userId), {
+          email,
+          role
+        });
+
+        alert("Registration successful!");
+        logAction(`Registered user: ${email} as ${role}`);
+
+        // Redirect to login
+        window.location.href = "login.html";
+      } catch (err) {
+        logAction(`Registration failed for ${email}: ${err.message}`);
+        alert("Registration failed. Try again.");
+      }
+    });
+  </script>
+</body>
+</html>

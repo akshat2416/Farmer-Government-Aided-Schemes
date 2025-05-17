@@ -1,0 +1,122 @@
+<!-- public/admin.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel - Farmer Schemes</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>👨‍💼 Admin Dashboard</h1>
+
+  <!-- Post Crop Details -->
+  <section>
+    <h2>Post Crop Details</h2>
+    <form id="cropForm">
+      <input type="text" id="cropName" placeholder="Crop Name" required>
+      <input type="text" id="season" placeholder="Season" required>
+      <textarea id="cropDetails" placeholder="Crop Details" required></textarea>
+      <button type="submit">Add Crop</button>
+    </form>
+  </section>
+
+  <!-- Post Government Scheme -->
+  <section>
+    <h2>Post Government Scheme</h2>
+    <form id="schemeForm">
+      <input type="text" id="schemeName" placeholder="Scheme Name" required>
+      <textarea id="schemeDescription" placeholder="Scheme Description" required></textarea>
+      <button type="submit">Add Scheme</button>
+    </form>
+  </section>
+
+  <!-- Approve Applications -->
+  <section>
+    <h2>Pending Applications</h2>
+    <ul id="applicationList">
+      <!-- Applications will be loaded here -->
+    </ul>
+  </section>
+
+  <script type="module">
+    import { db } from "../firebase.js";
+    import {
+      collection,
+      addDoc,
+      getDocs,
+      updateDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+
+    // Logging utility
+    function logAction(action) {
+      console.log(`[Admin Log] ${new Date().toISOString()}: ${action}`);
+    }
+
+    // Add Crop
+    document.getElementById("cropForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const crop = {
+        name: document.getElementById("cropName").value,
+        season: document.getElementById("season").value,
+        details: document.getElementById("cropDetails").value
+      };
+
+      try {
+        await addDoc(collection(db, "crops"), crop);
+        alert("Crop added successfully!");
+        logAction("Added crop: " + crop.name);
+      } catch (err) {
+        alert("Error adding crop.");
+        logAction("Failed to add crop: " + err.message);
+      }
+    });
+
+    // Add Scheme
+    document.getElementById("schemeForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const scheme = {
+        name: document.getElementById("schemeName").value,
+        description: document.getElementById("schemeDescription").value
+      };
+
+      try {
+        await addDoc(collection(db, "schemes"), scheme);
+        alert("Scheme posted!");
+        logAction("Posted scheme: " + scheme.name);
+      } catch (err) {
+        alert("Error posting scheme.");
+        logAction("Failed to post scheme: " + err.message);
+      }
+    });
+
+    // Load Applications
+    async function loadApplications() {
+      const applicationList = document.getElementById("applicationList");
+      applicationList.innerHTML = "";
+      const querySnapshot = await getDocs(collection(db, "applications"));
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.status === "pending") {
+          const li = document.createElement("li");
+          li.textContent = `Farmer: ${data.userEmail}, Scheme: ${data.schemeName}`;
+          const approveBtn = document.createElement("button");
+          approveBtn.textContent = "Approve";
+          approveBtn.onclick = async () => {
+            await updateDoc(doc(db, "applications", docSnap.id), {
+              status: "approved"
+            });
+            alert("Application approved!");
+            logAction("Approved application: " + docSnap.id);
+            loadApplications();
+          };
+          li.appendChild(approveBtn);
+          applicationList.appendChild(li);
+        }
+      });
+    }
+
+    loadApplications();
+  </script>
+</body>
+</html>
